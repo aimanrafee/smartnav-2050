@@ -1,6 +1,6 @@
 /**
  * SmartNav 2050 - 3D Driving & Liquid Glass Edition (Integrated)
- * Kemaskini: Real-time POV (Bearing & Dynamic Pitch) + Service Worker
+ * Kemaskini: Real-time POV + Advanced Search + Navigation UI Logic
  */
 
 // 1. Inisialisasi Pembolehubah Global
@@ -44,14 +44,18 @@ function toggleStyle() {
     speak(modeText);
 }
 
-// --- 5. SEARCH POI ---
+// --- 5. SEARCH POI (DENGAN ERROR HANDLING GAMBAR 1) ---
 async function searchPOI(query) {
     if (!query) return;
     statusEl.innerText = `Mencari: ${query}...`;
     
     try {
+        // Gunakan User-Agent & Headers untuk elakkan block (Rujukan Gambar 1)
         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`, {
-            headers: { 'Accept-Language': 'ms' }
+            headers: { 
+                'Accept-Language': 'ms',
+                'User-Agent': 'SmartNav2050-App-AimanRafee' 
+            }
         });
         
         if (!response.ok) throw new Error("Pelayan tidak bertindak balas.");
@@ -61,6 +65,9 @@ async function searchPOI(query) {
             const { lat, lon, display_name } = data[0];
             const dest = [parseFloat(lon), parseFloat(lat)];
             
+            // Simpan destinasi global
+            window.currentDest = dest;
+
             map.flyTo({ 
                 center: dest, 
                 zoom: 17, 
@@ -75,18 +82,44 @@ async function searchPOI(query) {
                 .addTo(map);
 
             statusEl.innerText = `Destinasi: ${display_name}`;
-            speak(`Destinasi ditemui. Menghalakan sistem ke ${display_name}`);
+            speak(`Destinasi ditemui. Klik Mula untuk navigasi.`);
+            
+            // Automatik tanya untuk mula navigasi (UI Gambar 4)
+            setTimeout(() => {
+                if(confirm("Mulakan Navigasi ke " + display_name + "?")) {
+                    startNavigation();
+                }
+            }, 1000);
+
         } else {
-            alert("Lokasi tidak ditemui.");
+            alert("Lokasi tidak ditemui. Sila cuba kata kunci lain.");
             updateOnlineStatus();
         }
     } catch (err) {
         console.error("Search Error:", err);
+        alert("Gagal menghubungi pelayan carian. Sila periksa rangkaian anda.");
         statusEl.innerText = "⚠️ Ralat rangkaian carian.";
     }
 }
 
-// --- 6. LOGIK POV PEMANDUAN & TRACKING (DIKEMASKINI) ---
+// --- 6. LOGIK MOD PEMANDUAN 3D (GAMBAR 4) ---
+function startNavigation() {
+    const navPanel = document.getElementById('nav-instruction');
+    if (navPanel) navPanel.style.display = 'block';
+    
+    map.easeTo({
+        pitch: 75,      // Condongkan peta ala Gambar 4
+        zoom: 18,       // Dekatkan kamera untuk butiran jalan
+        duration: 2000,
+        bearing: lastHeading,
+        essential: true
+    });
+
+    statusEl.innerText = "Mod Navigasi Aktif";
+    speak("Navigasi bermula. Terus ke hadapan.");
+}
+
+// --- 7. LOGIK POV PEMANDUAN & TRACKING ---
 function startLocationTracking() {
     if (!navigator.geolocation) return;
 
@@ -95,12 +128,10 @@ function startLocationTracking() {
         const newCoords = [longitude, latitude];
         currentPos = newCoords;
 
-        // Simpan heading jika GPS memberikannya (untuk POV)
         if (heading !== null && heading !== undefined) {
             lastHeading = heading;
         }
 
-        // Update Marker Pengguna
         if (!userMarker) {
             userMarker = new maplibregl.Marker({ color: '#00d4ff', scale: 0.9 })
                 .setLngLat(newCoords)
@@ -109,12 +140,12 @@ function startLocationTracking() {
             userMarker.setLngLat(newCoords);
         }
 
-        // KEMASKINI POV DINAMIK:
+        // POV Dinamik: Peta akan bergerak mengikut pergerakan anda
         map.easeTo({
             center: newCoords,
             bearing: lastHeading, 
             pitch: speed > 2 ? 75 : 65, 
-            duration: 1500, // Memberikan kesan 'Liquid' yang smooth
+            duration: 1500,
             easing: (t) => t 
         });
 
@@ -126,7 +157,7 @@ function startLocationTracking() {
     });
 }
 
-// --- 7. RECENTER ---
+// --- 8. RECENTER ---
 function recenterMap() {
     if (map && currentPos) {
         map.flyTo({
@@ -138,26 +169,31 @@ function recenterMap() {
             essential: true
         });
         statusEl.innerText = "🎯 GPS Terkunci";
+        
+        // Sembunyikan panel nav jika mahu reset view
+        const navPanel = document.getElementById('nav-instruction');
+        if (navPanel) navPanel.style.display = 'none';
+        
         setTimeout(updateOnlineStatus, 2000);
     }
 }
 
-// --- 8. SHARE LOCATION (DIPERBAIKI) ---
+// --- 9. SHARE LOCATION ---
 function shareMyLocation() {
     const shareUrl = `https://www.google.com/maps?q=${currentPos[1]},${currentPos[0]}`;
     if (navigator.share) {
         navigator.share({
             title: 'SmartNav 2050',
-            text: 'Lokasi pemanduan real-time saya:',
+            text: 'Lokasi real-time saya:',
             url: shareUrl
         });
     } else {
         navigator.clipboard.writeText(shareUrl);
-        alert("Pautan lokasi telah disalin!");
+        alert("Pautan lokasi disalin!");
     }
 }
 
-// --- 9. INIT MAP ---
+// --- 10. INIT MAP ---
 function initMap() {
     map = new maplibregl.Map({
         container: 'map',
@@ -181,7 +217,7 @@ function initMap() {
     });
 }
 
-// --- 10. UTILITY ---
+// --- 11. UTILITY ---
 function saveTripData(coords) {
     if (dbRequest.result) {
         try {
@@ -201,18 +237,17 @@ function updateOnlineStatus() {
     statusEl.style.borderLeft = isOnline ? "5px solid #00d4ff" : "5px solid #ff4b2b";
 }
 
-// --- 11. STARTUP ---
+// --- 12. STARTUP ---
 window.addEventListener('DOMContentLoaded', () => {
     initMap();
     window.addEventListener('online', updateOnlineStatus);
     window.addEventListener('offline', updateOnlineStatus);
 });
 
-// --- 12. DAFTARKAN SERVICE WORKER UNTUK MOD OFFLINE ---
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('SmartNav Offline Engine: Ready', reg))
+            .then(reg => console.log('SmartNav Offline Engine: Ready'))
             .catch(err => console.log('SmartNav Offline Engine: Failed', err));
     });
 }
