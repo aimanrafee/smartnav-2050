@@ -1,6 +1,6 @@
 /**
  * SmartNav 2050 - 3D Driving & Liquid Glass Edition (Integrated)
- * Kemaskini: Real-time POV (Bearing & Dynamic Pitch)
+ * Kemaskini: Real-time POV (Bearing & Dynamic Pitch) + Service Worker
  */
 
 // 1. Inisialisasi Pembolehubah Global
@@ -110,8 +110,6 @@ function startLocationTracking() {
         }
 
         // KEMASKINI POV DINAMIK:
-        // Peta akan berpusing (bearing) mengikut arah peranti 
-        // Pitch akan semakin condong (max 75) jika kenderaan bergerak laju
         map.easeTo({
             center: newCoords,
             bearing: lastHeading, 
@@ -123,7 +121,7 @@ function startLocationTracking() {
         saveTripData(position.coords);
     }, (err) => console.warn(err), { 
         enableHighAccuracy: true,
-        maximumAge: 0, // Dapatkan data segar untuk POV yang tepat
+        maximumAge: 0, 
         timeout: 5000 
     });
 }
@@ -146,7 +144,6 @@ function recenterMap() {
 
 // --- 8. SHARE LOCATION (DIPERBAIKI) ---
 function shareMyLocation() {
-    // Membaiki format URL untuk koordinat yang betul
     const shareUrl = `https://www.google.com/maps?q=${currentPos[1]},${currentPos[0]}`;
     if (navigator.share) {
         navigator.share({
@@ -210,3 +207,12 @@ window.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('online', updateOnlineStatus);
     window.addEventListener('offline', updateOnlineStatus);
 });
+
+// --- 12. DAFTARKAN SERVICE WORKER UNTUK MOD OFFLINE ---
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('SmartNav Offline Engine: Ready', reg))
+            .catch(err => console.log('SmartNav Offline Engine: Failed', err));
+    });
+}
