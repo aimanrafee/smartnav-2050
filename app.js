@@ -1,15 +1,14 @@
 /**
- * SmartNav 2050 - 3D Driving Edition
- * Features: MapLibre 3D, Offline IndexedDB, Real-time Tracking, 
- * Voice Guidance, Search POI, and Location Sharing.
+ * SmartNav 2050 - 3D Driving Edition (FIXED)
  */
 
 // 1. Inisialisasi Pembolehubah Global
-let map, userMarker;
-let currentPos = [101.6869, 3.1390]; // MapLibre guna format [LNG, LAT]
+let map;
+let userMarker = null;
+let currentPos = [101.6869, 3.1390]; // Format: [LNG, LAT]
 const statusEl = document.getElementById('status');
 
-// --- 2. INDEXEDDB SETUP (Storan Offline Pintar) ---
+// --- 2. INDEXEDDB SETUP ---
 const dbRequest = indexedDB.open("SmartNavDB", 1);
 dbRequest.onupgradeneeded = (e) => {
     const db = e.target.result;
@@ -18,7 +17,7 @@ dbRequest.onupgradeneeded = (e) => {
     }
 };
 
-// --- 3. FUNGSI VOICE GUIDANCE (TTS) ---
+// --- 3. FUNGSI VOICE GUIDANCE ---
 function speak(text) {
     if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
@@ -29,7 +28,7 @@ function speak(text) {
     }
 }
 
-// --- 4. FUNGSI NAVIGASI & SEARCH POI ---
+// --- 4. SEARCH POI ---
 async function searchPOI(query) {
     if (!query) return;
     statusEl.innerText = `Mencari: ${query}...`;
@@ -38,21 +37,24 @@ async function searchPOI(query) {
         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`);
         const data = await response.json();
         
-        if (data.length > 0) {
+        if (data && data.length > 0) {
             const { lat, lon, display_name } = data[0];
             const dest = [parseFloat(lon), parseFloat(lat)];
             
-            // Animasi ke destinasi
-            map.flyTo({ center: dest, zoom: 16, pitch: 60, speed: 1.2 });
+            map.flyTo({ 
+                center: dest, 
+                zoom: 17, 
+                pitch: 60, 
+                speed: 1.5,
+                curve: 1
+            });
             
-            // Tambah Marker Destinasi
-            new maplibregl.Marker({ color: 'red' })
+            new maplibregl.Marker({ color: '#ff0000' })
                 .setLngLat(dest)
                 .setPopup(new maplibregl.Popup().setHTML(`<b>Destinasi:</b><br>${display_name}`))
-                .addTo(map)
-                .togglePopup();
+                .addTo(map);
 
-            speak(`Destinasi ditemui. Menghalakan sistem ke ${display_name}`);
+            speak(`Destinasi ditemui: ${display_name}`);
         } else {
             alert("Lokasi tidak ditemui.");
         }
@@ -61,100 +63,96 @@ async function searchPOI(query) {
     }
 }
 
-// --- 5. FUNGSI DRIVING VIEW & TRACKING ---
+// --- 5. TRACKING & DRIVING VIEW ---
 function startLocationTracking() {
-    if (!navigator.geolocation) {
-        statusEl.innerText = "GPS Tidak Disokong";
-        return;
-    }
+    if (!navigator.geolocation) return;
 
     navigator.geolocation.watchPosition((position) => {
-        const { latitude, longitude, heading, speed } = position.coords;
+        const { latitude, longitude, heading } = position.coords;
         const newCoords = [longitude, latitude];
         currentPos = newCoords;
 
-        // Kemaskini Marker Pengguna
+        // Update Marker
         if (!userMarker) {
-            userMarker = new maplibregl.Marker({ scale: 0.8, color: '#007bff' })
+            userMarker = new maplibregl.Marker({ color: '#007bff' })
                 .setLngLat(newCoords)
                 .addTo(map);
         } else {
             userMarker.setLngLat(newCoords);
         }
 
-        // --- LOGIK DRIVING VIEW (Real-time) ---
-        // Jika sedang bergerak (speed > 0), peta akan pusing ikut arah (heading)
+        // Auto-follow Driving View
         map.easeTo({
             center: newCoords,
-            bearing: heading || 0, // Pusing peta ikut arah kereta
-            pitch: 60,             // Kekalkan pandangan 3D
-            duration: 1000,
-            essential: true
+            bearing: heading || 0,
+            pitch: 60,
+            duration: 1000
         });
 
         saveTripData(position.coords);
     }, (err) => console.warn(err), { enableHighAccuracy: true });
 }
 
-// --- 6. FUNGSI RECENTER ---
+// --- 6. RECENTER ---
 function recenterMap() {
-    if (currentPos) {
+    if (map && currentPos) {
         map.flyTo({
             center: currentPos,
             zoom: 17,
             pitch: 60,
             bearing: 0,
-            essential: true,
             duration: 1500
         });
-        statusEl.innerText = "Mengunci lokasi GPS...";
+        statusEl.innerText = "Mengunci GPS...";
         setTimeout(updateOnlineStatus, 2000);
     }
 }
 
-// --- 7. SHARE LOCATION ---
+// --- 7. SHARE (FIXED LINK) ---
 function shareMyLocation() {
     const shareUrl = `https://www.google.com/maps?q=${currentPos[1]},${currentPos[0]}`;
     if (navigator.share) {
         navigator.share({
             title: 'SmartNav 2050',
-            text: 'Ini lokasi saya:',
+            text: 'Lokasi semasa saya:',
             url: shareUrl
         });
     } else {
-        alert("Link lokasi disalin!");
+        navigator.clipboard.writeText(shareUrl);
+        alert("Link lokasi disalin ke clipboard!");
     }
 }
 
-// --- 8. INIT MAP (MAPLIBRE 3D) ---
+// --- 8. INIT MAP ---
 function initMap() {
     map = new maplibregl.Map({
         container: 'map',
-        style: 'https://tiles.openfreemap.org/styles/liberty', // OSM Liberty 3D Style
+        style: 'https://tiles.openfreemap.org/styles/liberty', 
         center: currentPos,
         zoom: 14,
-        pitch: 45, // Pandangan awal sedikit senget
-        bearing: 0
+        pitch: 45
     });
 
-    // Tambah kawalan Navigasi (Zoom/Compass)
     map.addControl(new maplibregl.NavigationControl(), 'top-left');
 
+    // Tunggu map 'load' sebelum start tracking
     map.on('load', () => {
+        console.log("MapLibre 3D Ready");
+        startLocationTracking();
         updateOnlineStatus();
     });
 }
 
 // --- 9. UTILITY ---
 function saveTripData(coords) {
-    const db = dbRequest.result;
-    if (!db) return;
-    const tx = db.transaction("trips", "readwrite");
-    tx.objectStore("trips").add({
-        timestamp: Date.now(),
-        lat: coords.latitude,
-        lng: coords.longitude
-    });
+    if (dbRequest.result) {
+        const tx = dbRequest.result.transaction("trips", "readwrite");
+        tx.objectStore("trips").add({
+            timestamp: Date.now(),
+            lat: coords.latitude,
+            lng: coords.longitude
+        });
+    }
 }
 
 function updateOnlineStatus() {
@@ -164,13 +162,8 @@ function updateOnlineStatus() {
 }
 
 // --- 10. STARTUP ---
-window.addEventListener('load', () => {
+window.addEventListener('DOMContentLoaded', () => {
     initMap();
-    startLocationTracking();
     window.addEventListener('online', updateOnlineStatus);
     window.addEventListener('offline', updateOnlineStatus);
 });
-
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js');
-}
