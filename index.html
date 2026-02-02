@@ -2,163 +2,137 @@
 <html lang="ms">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SmartNav 2050 - Liquid Glass Edition</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>SmartNav 2050 - Ultimate Liquid Glass</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#00d4ff">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="SmartNav">
-
     <link rel="apple-touch-icon" href="smartnav2050.png">
     <link rel="icon" type="image/png" href="smartnav2050.png">
-    
-    <script src='https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.js'></script>
-    <link href='https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.css' rel='stylesheet' />
+
+    <script src='https://unpkg.com/maplibre-gl@3.x/dist/maplibre-gl.js'></script>
+    <link href='https://unpkg.com/maplibre-gl@3.x/dist/maplibre-gl.css' rel='stylesheet' />
     
     <style>
         :root {
-            --glass: rgba(255, 255, 255, 0.12);
-            --glass-heavy: rgba(255, 255, 255, 0.22);
-            --blur: blur(20px);
-            --border: 1px solid rgba(255, 255, 255, 0.18);
+            --glass: rgba(255, 255, 255, 0.88);
+            --glass-dark: rgba(0, 0, 0, 0.75);
+            --dark-text: #121212;
             --accent: #00d4ff;
-            --text: #ffffff;
+            --blur: blur(18px);
+            --shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
         }
 
         body, html { 
-            margin: 0; 
-            padding: 0; 
-            height: 100%; 
-            width: 100%; 
-            overflow: hidden; 
-            background-color: #000; 
+            margin: 0; padding: 0; height: 100%; width: 100%; 
+            overflow: hidden; background-color: #000;
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         }
 
-        #map { 
-            height: 100vh; 
-            width: 100vw; 
-            z-index: 1; 
-        }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; z-index: 1; }
 
-        /* --- UI SEARCH (TOP) --- */
+        /* --- Dynamic Island Search Bar (Top) --- */
         .search-container {
             position: absolute;
-            top: env(safe-area-inset-top, 20px);
+            top: env(safe-area-inset-top, 45px);
             left: 50%;
             transform: translateX(-50%);
+            width: 92%;
+            max-width: 420px;
             z-index: 1000;
-            display: flex;
-            align-items: center;
+        }
+
+        .search-island {
             background: var(--glass);
             backdrop-filter: var(--blur);
             -webkit-backdrop-filter: var(--blur);
-            padding: 6px 18px;
-            border-radius: 50px;
-            border: var(--border);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
-            width: 85%;
-            max-width: 420px;
-            transition: all 0.3s ease;
+            border-radius: 35px;
+            padding: 6px 20px;
+            display: flex;
+            align-items: center;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.4);
         }
 
-        #poi-search {
+        #search-input {
             background: transparent;
             border: none;
-            color: var(--text);
-            padding: 12px;
             width: 100%;
-            font-size: 16px;
+            padding: 12px;
+            font-size: 17px;
+            color: var(--dark-text);
             outline: none;
-            font-weight: 400;
+            font-weight: 500;
         }
 
-        #poi-search::placeholder { color: rgba(255, 255, 255, 0.5); }
-
-        .search-icon {
-            color: var(--accent);
-            font-size: 18px;
+        .search-btn {
+            font-size: 20px;
             cursor: pointer;
-            padding-left: 10px;
+            padding: 5px;
+            transition: transform 0.2s;
         }
+        .search-btn:active { transform: scale(0.8); }
 
-        /* --- LIQUID DASHBOARD (BOTTOM) --- */
-        .bottom-dashboard {
+        /* --- Right-Side Map Controls (Liquid Glass) --- */
+        .map-controls {
             position: absolute;
-            bottom: env(safe-area-inset-bottom, 30px);
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1000;
+            right: 20px;
+            bottom: 140px; /* Posisi atas sedikit dari dashboard status */
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            width: 90%;
-            max-width: 450px;
+            gap: 14px;
+            z-index: 1000;
         }
 
-        .status-panel {
-            background: var(--glass-heavy);
-            backdrop-filter: var(--blur);
-            -webkit-backdrop-filter: var(--blur);
-            padding: 14px;
-            border-radius: 20px;
-            border: var(--border);
-            color: var(--text);
-            text-align: center;
-            font-size: 14px;
-            font-weight: 500;
-            letter-spacing: 0.5px;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
-            border-bottom: 2px solid var(--accent);
-            text-transform: uppercase;
-        }
-
-        .action-bar {
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
+        .glass-btn {
+            width: 58px;
+            height: 58px;
+            border-radius: 50%;
             background: var(--glass);
             backdrop-filter: var(--blur);
             -webkit-backdrop-filter: var(--blur);
-            padding: 10px;
-            border-radius: 35px;
-            border: var(--border);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
-        }
-
-        .btn-round {
-            width: 55px;
-            height: 55px;
-            border-radius: 50%;
-            border: none;
-            background: rgba(255, 255, 255, 0.08);
-            color: white;
-            font-size: 22px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2), inset 0 0 12px rgba(255,255,255,0.6);
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
+            font-size: 22px;
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            border: var(--border);
         }
 
-        .btn-round:active { 
-            transform: scale(0.8); 
-            background: var(--accent);
-            box-shadow: 0 0 15px var(--accent);
+        .glass-btn:active { transform: scale(0.85); background: var(--accent); color: white; }
+
+        /* --- Dashboard Status (Bottom) --- */
+        .status-island {
+            position: absolute;
+            bottom: env(safe-area-inset-bottom, 35px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: 88%;
+            max-width: 450px;
+            background: var(--glass-dark);
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
+            padding: 16px;
+            border-radius: 25px;
+            text-align: center;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            z-index: 999;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 4px solid var(--accent);
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
         }
 
-        /* Hide Attribution for Ultra-clean Look */
-        .maplibregl-ctrl-attrib { display: none; }
-        
-        /* Pulse Animation for Accents */
-        @keyframes pulse-accent {
-            0% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(0, 212, 255, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0); }
-        }
+        /* Cleaning Map Visuals */
+        .maplibregl-ctrl { display: none !important; }
     </style>
 </head>
 <body>
@@ -166,23 +140,23 @@
     <div id="map"></div>
 
     <div class="search-container">
-        <input type="text" id="poi-search" placeholder="Cari destinasi bijak...">
-        <div class="search-icon" onclick="searchPOI(document.getElementById('poi-search').value)">🔍</div>
-    </div>
-
-    <div class="bottom-dashboard">
-        <div id="status" class="status-panel">Sistem Navigasi 3D Aktif</div>
-        
-        <div class="action-bar">
-            <button class="btn-round" onclick="recenterMap()" title="Recenter">🎯</button>
-            
-            <button class="btn-round" style="background: rgba(40, 167, 69, 0.15);" onclick="shareMyLocation()" title="Kongsi">🔗</button>
-            
-            <button class="btn-round" style="background: rgba(0, 212, 255, 0.15);" onclick="speak('Sistem SmartNav bersedia untuk panduan')" title="Suara">🔊</button>
+        <div class="search-island">
+            <input type="text" id="search-input" placeholder="Ke mana kita hari ini?" onkeypress="if(event.key === 'Enter') searchPOI(this.value)">
+            <div class="search-btn" onclick="searchPOI(document.getElementById('search-input').value)">🔍</div>
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <div class="map-controls">
+        <div class="glass-btn" onclick="map.zoomIn()" title="Zoom Masuk">➕</div>
+        <div class="glass-btn" onclick="map.zoomOut()" title="Zoom Keluar">➖</div>
+        <div class="glass-btn" onclick="recenterMap()" title="Lokasi Saya">🎯</div>
+        <div class="glass-btn" onclick="toggleStyle()" title="Tukar Peta">🛰️</div>
+        <div class="glass-btn" style="background: rgba(40, 167, 69, 0.3);" onclick="shareMyLocation()" title="Kongsi">🔗</div>
+        <div class="glass-btn" style="background: rgba(0, 212, 255, 0.3);" onclick="speak('Sistem diaktifkan')" title="Suara">🔊</div>
+    </div>
 
+    <div id="status" class="status-island">Sistem SmartNav 2050 Sedia</div>
+
+    <script src="app.js"></script>
 </body>
 </html>
