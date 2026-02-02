@@ -1,6 +1,6 @@
 /**
  * SmartNav 2050 - 3D Driving & Liquid Glass Edition (Integrated)
- * Kemaskini: SmartNav-API Integration + Zero-Error Logic
+ * Kemaskini: Hybrid Search (Online + Offline Fallback) + API Integration
  */
 
 // 1. Inisialisasi Pembolehubah Global
@@ -44,62 +44,88 @@ function toggleStyle() {
     speak(modeText);
 }
 
-// --- 5. SEARCH POI (DENGAN ERROR HANDLING GAMBAR 1) ---
+// --- 5. HYBRID SEARCH POI (ONLINE + OFFLINE) ---
 async function searchPOI(query) {
     if (!query) return;
+    query = query.toLowerCase();
     statusEl.innerText = `Mencari: ${query}...`;
-    
-    try {
-        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`, {
-            headers: { 
-                'Accept-Language': 'ms',
-                'User-Agent': 'SmartNav2050-App-AimanRafee' 
-            }
-        });
-        
-        if (!response.ok) throw new Error("Pelayan tidak bertindak balas.");
-        const data = await response.json();
-        
-        if (data && data.length > 0) {
-            const { lat, lon, display_name } = data[0];
-            const dest = [parseFloat(lon), parseFloat(lat)];
-            
-            window.currentDest = dest;
 
-            map.flyTo({ 
-                center: dest, 
-                zoom: 17, 
-                pitch: 70, 
-                speed: 1.2,
-                essential: true
-            });
-            
-            new maplibregl.Marker({ color: '#ff4b2b' })
-                .setLngLat(dest)
-                .setPopup(new maplibregl.Popup().setHTML(`<b>Destinasi:</b><br>${display_name}`))
-                .addTo(map);
-
-            statusEl.innerText = `Destinasi: ${display_name}`;
-            speak(`Destinasi ditemui. Klik Mula untuk navigasi.`);
-            
-            setTimeout(() => {
-                if(confirm("Mulakan Navigasi ke " + display_name + "?")) {
-                    startNavigation();
+    // A. STRATEGI ONLINE: Guna Nominatim jika ada rangkaian
+    if (navigator.onLine) {
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`, {
+                headers: { 
+                    'Accept-Language': 'ms',
+                    'User-Agent': 'SmartNav2050-App-AimanRafee' 
                 }
-            }, 1000);
-
-        } else {
-            alert("Lokasi tidak ditemui. Sila cuba kata kunci lain.");
-            updateOnlineStatus();
+            });
+            const data = await response.json();
+            if (data && data.length > 0) {
+                renderSearchResult(data[0].lat, data[0].lon, data[0].display_name);
+                return;
+            }
+        } catch (err) {
+            console.log("Online search gagal, beralih ke mod Offline...");
         }
-    } catch (err) {
-        console.error("Search Error:", err);
-        alert("Gagal menghubungi pelayan carian. Sila periksa rangkaian anda.");
-        statusEl.innerText = "⚠️ Ralat rangkaian carian.";
+    }
+
+    // B. STRATEGI OFFLINE: Guna data dari semenanjung-poi.json (Fallback)
+    try {
+        const poiSource = map.getSource('semenanjung-poi');
+        if (poiSource) {
+            // Mengambil features yang telah dimuatkan ke dalam peta
+            const features = map.querySourceFeatures('semenanjung-poi');
+            
+            // Cari padanan nama dalam harta (properties) GeoJSON
+            const match = features.find(f => 
+                f.properties.name && f.properties.name.toLowerCase().includes(query)
+            );
+
+            if (match) {
+                const [lon, lat] = match.geometry.coordinates;
+                renderSearchResult(lat, lon, match.properties.name + " (Data Offline)");
+                speak(`Menemui lokasi offline: ${match.properties.name}`);
+            } else {
+                alert("Lokasi tidak ditemui. Sila cuba kata kunci lain.");
+                updateOnlineStatus();
+            }
+        }
+    } catch (e) {
+        console.error("Offline Search Error:", e);
+        statusEl.innerText = "⚠️ Ralat enjin carian.";
     }
 }
 
-// --- 6. LOGIK MOD PEMANDUAN 3D (GAMBAR 4) ---
+// Fungsi pembantu untuk memaparkan hasil carian pada peta
+function renderSearchResult(lat, lon, name) {
+    const dest = [parseFloat(lon), parseFloat(lat)];
+    window.currentDest = dest;
+
+    map.flyTo({ 
+        center: dest, 
+        zoom: 17, 
+        pitch: 70, 
+        speed: 1.2, 
+        essential: true 
+    });
+
+    // Buat marker baru untuk destinasi
+    new maplibregl.Marker({ color: '#ff4b2b' })
+        .setLngLat(dest)
+        .setPopup(new maplibregl.Popup().setHTML(`<b>${name}</b>`))
+        .addTo(map);
+
+    statusEl.innerText = `Destinasi: ${name}`;
+    speak(`Destinasi ditemui. Klik mula untuk navigasi.`);
+
+    setTimeout(() => {
+        if(confirm(`Mulakan Navigasi ke ${name}?`)) {
+            startNavigation();
+        }
+    }, 800);
+}
+
+// --- 6. LOGIK MOD PEMANDUAN 3D ---
 function startNavigation() {
     const navPanel = document.getElementById('nav-instruction');
     if (navPanel) navPanel.style.display = 'block';
@@ -188,7 +214,7 @@ function shareMyLocation() {
     }
 }
 
-// --- 10. INIT MAP (DIKEMASKINI UNTUK SMARTNAV-API) ---
+// --- 10. INIT MAP (INTEGRASI SMARTNAV-API) ---
 function initMap() {
     map = new maplibregl.Map({
         container: 'map',
@@ -203,7 +229,7 @@ function initMap() {
     map.on('load', () => {
         statusEl.innerText = "🚀 Menghubungkan ke SmartNav-API...";
 
-        // A. Masukkan Data Jalan Raya (76MB dari GitHub anda)
+        // A. Masukkan Data Jalan Raya (76MB dari GitHub)
         map.addSource('semenanjung-roads', {
             type: 'geojson',
             data: 'https://raw.githubusercontent.com/aimanrafee/SmartNav-API/main/data/semenanjung-roads.json',
@@ -222,7 +248,7 @@ function initMap() {
             }
         });
 
-        // C. Masukkan Data POI (1.6MB)
+        // C. Masukkan Data POI (1.6MB) untuk Offline Search
         map.addSource('semenanjung-poi', {
             type: 'geojson',
             data: 'https://raw.githubusercontent.com/aimanrafee/SmartNav-API/main/data/semenanjung-poi.json'
@@ -242,7 +268,6 @@ function initMap() {
         statusEl.innerText = "🚀 Navigasi 3D 2050 Aktif (API Connected)";
     });
 
-    // Handle Error jika imej ikon (Sprite) tidak dijumpai
     map.on('styleimagemissing', (e) => {
         console.warn(`Ikon "${e.id}" tiada dalam sprite. Menggunakan placeholder.`);
     });
