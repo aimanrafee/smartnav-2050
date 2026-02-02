@@ -15,7 +15,6 @@
     <link rel="icon" type="image/png" href="smartnav2050.png">
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
     
     <style>
@@ -54,29 +53,61 @@
             transition: all 0.3s ease;
         }
 
-        /* Alihkan kawalan zoom supaya tidak bertindih dengan panel routing */
+        /* Butang Recenter (Lokasi Semasa) */
+        #recenter-btn {
+            position: absolute;
+            bottom: 105px; /* Kedudukan di atas bar status */
+            right: 20px;
+            z-index: 1000;
+            width: 55px;
+            height: 55px;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 123, 255, 0.3);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        #recenter-btn:active {
+            transform: scale(0.9);
+            background: #007bff;
+            color: white;
+        }
+
+        /* Alihkan kawalan zoom supaya tidak bertindih */
         .leaflet-top.leaflet-left {
             top: 20px;
             left: 20px;
         }
 
-        /* Custom style untuk panel arahan routing (jika muncul) */
+        /* Style untuk panel arahan routing */
         .leaflet-routing-container {
             background-color: rgba(255, 255, 255, 0.9);
             backdrop-filter: blur(5px);
             border-radius: 8px;
-            max-height: 300px;
+            max-height: 250px;
             overflow-y: auto;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
     </style>
 </head>
 <body>
 
     <div id="map"></div>
+
+    <button id="recenter-btn" onclick="recenterMap()" title="Lokasi Semasa">
+        <span style="font-size: 24px;">🎯</span>
+    </button>
+
     <div id="status">Mengaktifkan Algoritma...</div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
     <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
     
     <script src="app.js"></script>
