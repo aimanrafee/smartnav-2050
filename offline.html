@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartNav 2050 - Offline Mode</title>
+    <style>
+        :root {
+            --neon-blue: #007bff;
+            --bg-dark: #0a0a0a;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--bg-dark);
+            color: white;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            text-align: center;
+        }
+        .container {
+            padding: 20px;
+            border: 1px solid rgba(0, 123, 255, 0.3);
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            max-width: 80%;
+        }
+        .icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+            filter: drop-shadow(0 0 10px var(--neon-blue));
+        }
+        h1 {
+            font-size: 24px;
+            margin: 10px 0;
+            letter-spacing: 2px;
+        }
+        p {
+            color: #ccc;
+            line-height: 1.6;
+        }
+        .btn-retry {
+            margin-top: 25px;
+            padding: 12px 30px;
+            background: var(--neon-blue);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+            transition: 0.3s;
+        }
+        .btn-retry:hover {
+            box-shadow: 0 0 20px var(--neon-blue);
+            transform: scale(1.05);
+        }
+        .status-tag {
+            font-size: 12px;
+            color: var(--neon-blue);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <span class="status-tag">System Status: Offline</span>
+        <div class="icon">📡</div>
+        <h1>SMARTNAV 2050</h1>
+        <p>Sambungan internet terputus.<br>Algoritma sedang menunggu signal aktif untuk mengemaskini data peta terkini.</p>
+        
+        <button class="btn-retry" onclick="window.location.reload()">Cuba Semula</button>
+    </div>
+
+    <script>
+        // Logik ringkas: Jika internet kembali aktif, automatik refresh ke app utama
+        window.addEventListener('online', () => {
+            window.location.href = './index.html';
+        });
+    </script>
+</body>
+</html>
