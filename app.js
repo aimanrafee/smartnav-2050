@@ -1,11 +1,47 @@
 /**
  * SmartNav 2050 - Main Application Logic
- * Fokus: Offline-First, Real-time Tracking, Local Algorithm
+ * Fokus: Offline-First, Real-time Tracking, Local Algorithm & IndexedDB Storage
  */
 
 // 1. Inisialisasi Peta & Pembolehubah Global
 let map, userMarker;
 const statusEl = document.getElementById('status');
+
+// --- INTEGRASI INDEXEDDB (Database Offline) ---
+const dbRequest = indexedDB.open("SmartNavDB", 1);
+
+dbRequest.onupgradeneeded = (event) => {
+    const db = event.target.result;
+    // Cipta storan untuk sejarah perjalanan jika belum wujud
+    if (!db.objectStoreNames.contains("trips")) {
+        db.createObjectStore("trips", { keyPath: "timestamp" });
+    }
+    console.log("SmartNavDB: Pangkalan data sedia.");
+};
+
+dbRequest.onerror = (event) => {
+    console.error("SmartNavDB Error:", event.target.errorCode);
+};
+
+// Fungsi untuk menyimpan data koordinat ke storan peranti
+function saveTripData(coords) {
+    const db = dbRequest.result;
+    if (!db) return;
+
+    const transaction = db.transaction("trips", "readwrite");
+    const store = transaction.objectStore("trips");
+    
+    const dataPoint = {
+        timestamp: Date.now(),
+        lat: coords.latitude,
+        lng: coords.longitude,
+        accuracy: coords.accuracy
+    };
+
+    store.add(dataPoint);
+    console.log("Lokasi disimpan secara offline:", dataPoint);
+}
+// ----------------------------------------------
 
 // 2. Fungsi Utama: Dijalankan apabila tetingkap dimuatkan
 window.addEventListener('load', () => {
@@ -33,7 +69,6 @@ async function registerServiceWorker() {
 
 // 4. Inisialisasi Peta (Leaflet)
 function initMap() {
-    // Default ke Kuala Lumpur jika GPS belum dapat dikesan
     map = L.map('map').setView([3.1390, 101.6869], 13);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -62,7 +97,10 @@ function startLocationTracking() {
             userMarker.setLatLng(newPos).getPopup().setContent("Lokasi Anda").update();
             map.panTo(newPos);
 
-            // Contoh penggunaan algoritma offline (Kira jarak ke KLCC sebagai contoh)
+            // AUTO-SAVE: Simpan ke IndexedDB setiap kali lokasi berubah
+            saveTripData(position.coords);
+
+            // Contoh penggunaan algoritma offline
             const dist = calculateDistance(latitude, longitude, 3.1578, 101.7123);
             console.log(`Jarak ke KLCC: ${dist.toFixed(2)} km`);
         },
@@ -75,13 +113,12 @@ function startLocationTracking() {
 function updateOnlineStatus() {
     const isOnline = navigator.onLine;
     statusEl.innerText = isOnline ? "Online" : "Offline Mode (Algorithm Active)";
-    statusEl.style.background = isOnline ? "#e6fffa" : "#fff5f5";
+    statusEl.style.background = isOnline ? "rgba(230, 255, 250, 0.9)" : "rgba(255, 245, 245, 0.9)";
     statusEl.style.color = isOnline ? "#2d3748" : "#c53030";
     statusEl.style.borderLeft = isOnline ? "5px solid green" : "5px solid red";
 }
 
 // 7. Smartest Algorithm: Haversine Formula (Offline Distance Calculation)
-// Digunakan untuk mengira jarak antara dua koordinat tanpa API luar.
 function calculateDistance(lat1, lon1, lat2, lon2) {
     const R = 6371; // Jejari bumi dalam KM
     const dLat = deg2rad(lat2 - lat1);
@@ -90,7 +127,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
         Math.sin(dLat / 2) * Math.sin(dLat / 2) +
         Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c; // Output dalam KM
+    return R * c; 
 }
 
 function deg2rad(deg) {
