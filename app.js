@@ -1,13 +1,14 @@
 /**
  * SmartNav 2050 - 3D Driving & Liquid Glass Edition (Integrated)
- * Features: Dynamic Pitch, Satellite Hybrid Toggle, IndexedDB, Voice Guidance
+ * Kemaskini: Real-time POV (Bearing & Dynamic Pitch)
  */
 
 // 1. Inisialisasi Pembolehubah Global
 let map;
 let userMarker = null;
-let currentPos = [101.6869, 3.1390]; // Format: [LNG, LAT]
+let currentPos = [101.6869, 3.1390]; 
 let isSatellite = false;
+let lastHeading = 0; // Menyimpan arah terakhir untuk kelancaran POV
 const statusEl = document.getElementById('status');
 
 // --- 2. INDEXEDDB SETUP ---
@@ -30,22 +31,20 @@ function speak(text) {
     }
 }
 
-// --- 4. FUNGSI TUKAR STYLE (Satellite/Hybrid Toggle) ---
+// --- 4. FUNGSI TUKAR STYLE ---
 function toggleStyle() {
     isSatellite = !isSatellite;
-    // Menggunakan URL tiles yang menyokong label jalan (Hybrid)
     const style = isSatellite 
-        ? 'https://tiles.openfreemap.org/styles/bright' // Hybrid/Satellite style
-        : 'https://tiles.openfreemap.org/styles/liberty'; // Vektor/Street style
+        ? 'https://tiles.openfreemap.org/styles/bright' 
+        : 'https://tiles.openfreemap.org/styles/liberty';
     
     map.setStyle(style);
-    
     const modeText = isSatellite ? "Mod Satellite Hybrid Aktif" : "Mod Peta Vektor Aktif";
     statusEl.innerText = modeText;
     speak(modeText);
 }
 
-// --- 5. SEARCH POI (Dengan Perbaikan Ralat & Voice) ---
+// --- 5. SEARCH POI ---
 async function searchPOI(query) {
     if (!query) return;
     statusEl.innerText = `Mencari: ${query}...`;
@@ -56,7 +55,6 @@ async function searchPOI(query) {
         });
         
         if (!response.ok) throw new Error("Pelayan tidak bertindak balas.");
-        
         const data = await response.json();
         
         if (data && data.length > 0) {
@@ -67,12 +65,10 @@ async function searchPOI(query) {
                 center: dest, 
                 zoom: 17, 
                 pitch: 70, 
-                speed: 1.5,
-                curve: 1.2,
+                speed: 1.2,
                 essential: true
             });
             
-            // Tambah Marker Destinasi
             new maplibregl.Marker({ color: '#ff4b2b' })
                 .setLngLat(dest)
                 .setPopup(new maplibregl.Popup().setHTML(`<b>Destinasi:</b><br>${display_name}`))
@@ -81,17 +77,16 @@ async function searchPOI(query) {
             statusEl.innerText = `Destinasi: ${display_name}`;
             speak(`Destinasi ditemui. Menghalakan sistem ke ${display_name}`);
         } else {
-            alert("Lokasi tidak ditemui. Sila cuba kata kunci lain.");
+            alert("Lokasi tidak ditemui.");
             updateOnlineStatus();
         }
     } catch (err) {
         console.error("Search Error:", err);
         statusEl.innerText = "⚠️ Ralat rangkaian carian.";
-        alert("Gagal menghubungi pelayan carian.");
     }
 }
 
-// --- 6. LOGIK MOOD PEMANDUAN & TRACKING ---
+// --- 6. LOGIK POV PEMANDUAN & TRACKING (DIKEMASKINI) ---
 function startLocationTracking() {
     if (!navigator.geolocation) return;
 
@@ -99,6 +94,11 @@ function startLocationTracking() {
         const { latitude, longitude, heading, speed } = position.coords;
         const newCoords = [longitude, latitude];
         currentPos = newCoords;
+
+        // Simpan heading jika GPS memberikannya (untuk POV)
+        if (heading !== null && heading !== undefined) {
+            lastHeading = heading;
+        }
 
         // Update Marker Pengguna
         if (!userMarker) {
@@ -109,19 +109,21 @@ function startLocationTracking() {
             userMarker.setLngLat(newCoords);
         }
 
-        // FUNGSI UPDATE KAMERA DINAMIK (Mood 2050)
+        // KEMASKINI POV DINAMIK:
+        // Peta akan berpusing (bearing) mengikut arah peranti 
+        // Pitch akan semakin condong (max 75) jika kenderaan bergerak laju
         map.easeTo({
             center: newCoords,
-            bearing: heading || 0,
-            pitch: speed > 10 ? 75 : 65, // Dynamic pitch berdasarkan kelajuan (Driving Mood)
-            duration: 2000,
-            easing: (t) => t // Linear movement
+            bearing: lastHeading, 
+            pitch: speed > 2 ? 75 : 65, 
+            duration: 1500, // Memberikan kesan 'Liquid' yang smooth
+            easing: (t) => t 
         });
 
         saveTripData(position.coords);
     }, (err) => console.warn(err), { 
         enableHighAccuracy: true,
-        maximumAge: 1000,
+        maximumAge: 0, // Dapatkan data segar untuk POV yang tepat
         timeout: 5000 
     });
 }
@@ -142,22 +144,23 @@ function recenterMap() {
     }
 }
 
-// --- 8. SHARE LOCATION ---
+// --- 8. SHARE LOCATION (DIPERBAIKI) ---
 function shareMyLocation() {
+    // Membaiki format URL untuk koordinat yang betul
     const shareUrl = `https://www.google.com/maps?q=${currentPos[1]},${currentPos[0]}`;
     if (navigator.share) {
         navigator.share({
             title: 'SmartNav 2050',
-            text: 'Lokasi pemanduan bijak saya:',
+            text: 'Lokasi pemanduan real-time saya:',
             url: shareUrl
         });
     } else {
         navigator.clipboard.writeText(shareUrl);
-        alert("Pautan lokasi telah disalin ke clipboard!");
+        alert("Pautan lokasi telah disalin!");
     }
 }
 
-// --- 9. INIT MAP (Mod Smart Vektor Awal) ---
+// --- 9. INIT MAP ---
 function initMap() {
     map = new maplibregl.Map({
         container: 'map',
@@ -169,13 +172,9 @@ function initMap() {
         antialias: true
     });
 
-    // Sembunyikan kawalan asal untuk kekalkan estetika Liquid Glass
-    map.addControl(new maplibregl.NavigationControl(), 'top-left');
-
     map.on('load', () => {
         statusEl.innerText = "🚀 Navigasi 3D 2050 Aktif";
         
-        // Aktifkan Bangunan 3D
         if (map.getLayer('building')) {
             map.setPaintProperty('building', 'fill-extrusion-height', ['get', 'height']);
         }
@@ -185,7 +184,7 @@ function initMap() {
     });
 }
 
-// --- 10. UTILITY (IndexedDB & Online Status) ---
+// --- 10. UTILITY ---
 function saveTripData(coords) {
     if (dbRequest.result) {
         try {
