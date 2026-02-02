@@ -24,6 +24,7 @@
             --accent: #00d4ff;
             --blur: blur(18px);
             --shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+            --nav-blue: rgba(0, 71, 187, 0.9);
         }
 
         body, html { 
@@ -75,6 +76,32 @@
             transition: transform 0.2s;
         }
         .search-btn:active { transform: scale(0.8); }
+
+        /* --- Navigation Instruction Panel (Top Overlay) --- */
+        .nav-panel {
+            position: absolute;
+            top: calc(env(safe-area-inset-top, 45px) + 70px); /* Di bawah search bar */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 400px;
+            background: var(--nav-blue);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-radius: 20px;
+            padding: 15px;
+            color: white;
+            z-index: 2000;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: none; /* Disembunyikan secara lalai */
+        }
+        
+        .nav-content { display: flex; align-items: center; gap: 15px; }
+        .nav-icon { font-size: 32px; }
+        .nav-text { display: flex; flex-direction: column; }
+        #next-step { font-size: 19px; font-weight: bold; letter-spacing: 0.5px; }
+        #distance { font-size: 14px; opacity: 0.9; }
 
         /* --- Right-Side Map Controls (Liquid Glass) --- */
         .map-controls {
@@ -143,6 +170,16 @@
         <div class="search-island">
             <input type="text" id="search-input" placeholder="Ke mana kita hari ini?" onkeypress="if(event.key === 'Enter') searchPOI(this.value)">
             <div class="search-btn" onclick="searchPOI(document.getElementById('search-input').value)">🔍</div>
+        </div>
+    </div>
+
+    <div id="nav-instruction" class="nav-panel">
+        <div class="nav-content">
+            <div class="nav-icon">⬆️</div>
+            <div class="nav-text">
+                <span id="next-step">Terus ke hadapan</span>
+                <small id="distance">200 meter</small>
+            </div>
         </div>
     </div>
 
