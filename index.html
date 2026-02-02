@@ -7,6 +7,8 @@
     
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#00d4ff">
+    
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="SmartNav">
@@ -78,9 +80,9 @@
         .search-btn:active { transform: scale(0.8); }
 
         /* --- Navigation Instruction Panel (Top Overlay) --- */
-        .nav-panel {
+        #nav-instruction {
             position: absolute;
-            top: calc(env(safe-area-inset-top, 45px) + 70px); /* Di bawah search bar */
+            top: calc(env(safe-area-inset-top, 45px) + 80px); 
             left: 50%;
             transform: translateX(-50%);
             width: 90%;
@@ -94,7 +96,7 @@
             z-index: 2000;
             box-shadow: var(--shadow);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            display: none; /* Disembunyikan secara lalai */
+            display: none; /* Dikawal oleh app.js */
         }
         
         .nav-content { display: flex; align-items: center; gap: 15px; }
@@ -126,15 +128,15 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            cursor: pointer;
             font-size: 22px;
+            cursor: pointer;
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
         .glass-btn:active { transform: scale(0.85); background: var(--accent); color: white; }
 
         /* --- Dashboard Status (Bottom) --- */
-        .status-island {
+        #status {
             position: absolute;
             bottom: env(safe-area-inset-bottom, 35px);
             left: 50%;
@@ -156,9 +158,10 @@
             border-bottom: 4px solid var(--accent);
             letter-spacing: 0.8px;
             text-transform: uppercase;
+            transition: border 0.3s ease;
         }
 
-        /* Cleaning Map Visuals */
+        /* Bersihkan UI MapLibre untuk nampak lebih 'clean' */
         .maplibregl-ctrl { display: none !important; }
     </style>
 </head>
@@ -184,15 +187,15 @@
     </div>
 
     <div class="map-controls">
-        <div class="glass-btn" onclick="map.zoomIn()" title="Zoom Masuk">➕</div>
-        <div class="glass-btn" onclick="map.zoomOut()" title="Zoom Keluar">➖</div>
-        <div class="glass-btn" onclick="recenterMap()" title="Lokasi Saya">🎯</div>
-        <div class="glass-btn" onclick="toggleStyle()" title="Tukar Peta">🛰️</div>
-        <div class="glass-btn" style="background: rgba(40, 167, 69, 0.3);" onclick="shareMyLocation()" title="Kongsi">🔗</div>
-        <div class="glass-btn" style="background: rgba(0, 212, 255, 0.3);" onclick="speak('Sistem diaktifkan')" title="Suara">🔊</div>
+        <div class="glass-btn" onclick="map.zoomIn()">➕</div>
+        <div class="glass-btn" onclick="map.zoomOut()">➖</div>
+        <div class="glass-btn" onclick="recenterMap()">🎯</div>
+        <div class="glass-btn" onclick="toggleStyle()">🛰️</div>
+        <div class="glass-btn" style="background: rgba(40, 167, 69, 0.3);" onclick="shareMyLocation()">🔗</div>
+        <div class="glass-btn" style="background: rgba(0, 212, 255, 0.3);" onclick="speak('Sistem diaktifkan')">🔊</div>
     </div>
 
-    <div id="status" class="status-island">Sistem SmartNav 2050 Sedia</div>
+    <div id="status">Sistem SmartNav 2050 Sedia</div>
 
     <script src="app.js"></script>
 </body>
