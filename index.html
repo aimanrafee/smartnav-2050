@@ -79,38 +79,54 @@
         }
         .search-btn:active { transform: scale(0.8); }
 
-        /* --- Results Island (List Pilihan) --- */
+        /* --- KEMASKINI: Results Island (UI Simetri & Minimal) --- */
         .results-island {
             margin-top: 10px;
             background: var(--glass);
             backdrop-filter: var(--blur);
             -webkit-backdrop-filter: var(--blur);
-            border-radius: 24px;
-            max-height: 280px;
+            border-radius: 24px; /* Smooth edge */
+            max-height: 250px;
             overflow-y: auto;
-            display: none;
+            display: none; /* Sembunyi jika tiada hasil */
             box-shadow: var(--shadow);
             border: 1px solid rgba(255, 255, 255, 0.4);
             padding: 8px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.3s ease;
         }
 
         .result-item {
-            padding: 12px 18px;
-            border-radius: 16px;
+            padding: 14px 20px;
+            border-radius: 18px;
+            color: var(--dark-text);
+            font-size: 15px;
+            font-weight: 500;
             cursor: pointer;
-            transition: all 0.2s ease;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            transition: background 0.2s;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
             display: flex;
             flex-direction: column;
             gap: 2px;
         }
 
         .result-item:last-child { border-bottom: none; }
-        .result-item:hover { background: rgba(0, 212, 255, 0.1); transform: translateX(5px); }
-        .result-item:active { background: var(--accent); color: white; }
+        
+        /* Efek Hover & Active yang 'Overkill' */
+        .result-item:hover { 
+            background: rgba(0, 212, 255, 0.1); 
+            transform: translateX(4px); 
+        }
+        
+        .result-item:active { 
+            background: var(--accent); 
+            color: white; 
+        }
 
-        /* --- Navigation Instruction Panel (Top Overlay) --- */
+        /* Custom Scrollbar untuk mengekalkan estetik */
+        .results-island::-webkit-scrollbar { width: 4px; }
+        .results-island::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 10px; }
+
+        /* --- Navigation Instruction Panel --- */
         #nav-instruction {
             position: absolute;
             top: calc(env(safe-area-inset-top, 45px) + 80px); 
@@ -136,7 +152,7 @@
         #next-step { font-size: 19px; font-weight: bold; letter-spacing: 0.5px; }
         #distance { font-size: 14px; opacity: 0.9; }
 
-        /* --- Right-Side Map Controls (Liquid Glass) --- */
+        /* --- Right-Side Map Controls --- */
         .map-controls {
             position: absolute;
             right: 20px;
@@ -193,10 +209,6 @@
         }
 
         .maplibregl-ctrl { display: none !important; }
-        
-        /* Custom Scrollbar for Results */
-        .results-island::-webkit-scrollbar { width: 4px; }
-        .results-island::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 10px; }
     </style>
 </head>
 <body>
