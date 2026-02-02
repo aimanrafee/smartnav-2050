@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartNav PWA</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+        #map { height: 100vh; width: 100vw; }
+        #status { 
+            position: absolute; bottom: 20px; left: 20px; z-index: 1000;
+            background: white; padding: 10px; border-radius: 8px; font-family: sans-serif;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+    <div id="status">Mencari Lokasi...</div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // 1. Register Service Worker untuk Offline
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
+
+        // 2. Inisialisasi Peta
+        const map = L.map('map').setView([3.1390, 101.6869], 13); // Koordinat KL
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // 3. Tracking Lokasi Real-time
+        navigator.geolocation.watchPosition((pos) => {
+            const { latitude, longitude } = pos.coords;
+            document.getElementById('status').innerText = `Lat: ${latitude.toFixed(4)}, Lng: ${longitude.toFixed(4)}`;
+            
+            L.marker([latitude, longitude]).addTo(map)
+                .bindPopup('Lokasi Anda').openPopup();
+            map.setView([latitude, longitude]);
+        }, (err) => {
+            console.error(err);
+        }, { enableHighAccuracy: true });
+    </script>
+</body>
+</html>
