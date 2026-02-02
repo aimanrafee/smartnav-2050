@@ -1,0 +1,18 @@
+# Dependency folders (jika anda guna npm/yarn nanti)
+node_modules/
+
+# OS Metadata
+.DS_Store
+Thumbs.db
+
+# Folder binaan (build)
+dist/
+build/
+
+# Fail peribadi / Environment variables
+.env
+.env.local
+
+# Fail log
+npm-debug.log*
+yarn-error.log*
