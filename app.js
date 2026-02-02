@@ -1,6 +1,6 @@
 /**
  * SmartNav 2050 - 3D Driving & Liquid Glass Edition (Integrated)
- * Kemaskini: Hybrid Search (Online + Offline Fallback) + API Integration
+ * Kemaskini: Dynamic UX Search + Hybrid Autocomplete
  */
 
 // 1. Inisialisasi Pembolehubah Global
@@ -8,7 +8,7 @@ let map;
 let userMarker = null;
 let currentPos = [101.6869, 3.1390]; 
 let isSatellite = false;
-let lastHeading = 0; // Menyimpan arah terakhir untuk kelancaran POV
+let lastHeading = 0; 
 const statusEl = document.getElementById('status');
 
 // --- 2. INDEXEDDB SETUP ---
@@ -44,13 +44,62 @@ function toggleStyle() {
     speak(modeText);
 }
 
-// --- 5. HYBRID SEARCH POI (ONLINE + OFFLINE) ---
+// --- 5. KEMASKINI: LOGIK UX CADANGAN CARIAN DINAMIK ---
+async function handleSearchInput(query) {
+    const resultsEl = document.getElementById('search-results');
+    
+    if (query.length < 2) {
+        resultsEl.style.display = 'none';
+        return;
+    }
+
+    let matches = [];
+
+    // 1. Ambil data dari Offline POI (Semenanjung-POI) untuk cadangan pantas
+    try {
+        const features = map.querySourceFeatures('semenanjung-poi');
+        // Filter unik berdasarkan nama untuk elak duplikasi dalam senarai
+        const uniqueNames = new Set();
+        matches = features
+            .filter(f => {
+                const name = f.properties.name;
+                if (name && name.toLowerCase().includes(query.toLowerCase()) && !uniqueNames.has(name)) {
+                    uniqueNames.add(name);
+                    return true;
+                }
+                return false;
+            })
+            .slice(0, 5); // Simetri: Hadkan 5 pilihan sahaja
+    } catch (e) { console.log("POI belum sedia untuk autocomplete"); }
+
+    // 2. Paparkan UI Cadangan (Liquid Glass Style)
+    if (matches.length > 0) {
+        resultsEl.innerHTML = '';
+        matches.forEach(match => {
+            const div = document.createElement('div');
+            div.className = 'result-item';
+            div.innerHTML = `<strong>📍 ${match.properties.name}</strong><small style="opacity:0.7; font-size:10px; display:block;">POI Terdekat</small>`;
+            div.onclick = () => {
+                document.getElementById('search-input').value = match.properties.name;
+                resultsEl.style.display = 'none';
+                searchPOI(match.properties.name);
+            };
+            resultsEl.appendChild(div);
+        });
+        resultsEl.style.display = 'block';
+    } else {
+        resultsEl.style.display = 'none';
+    }
+}
+
+// --- 6. HYBRID SEARCH POI (ONLINE + OFFLINE) ---
 async function searchPOI(query) {
     if (!query) return;
     query = query.toLowerCase();
     statusEl.innerText = `Mencari: ${query}...`;
+    document.getElementById('search-results').style.display = 'none'; // Tutup list bila cari
 
-    // A. STRATEGI ONLINE: Guna Nominatim jika ada rangkaian
+    // A. STRATEGI ONLINE
     if (navigator.onLine) {
         try {
             const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`, {
@@ -69,14 +118,11 @@ async function searchPOI(query) {
         }
     }
 
-    // B. STRATEGI OFFLINE: Guna data dari semenanjung-poi.json (Fallback)
+    // B. STRATEGI OFFLINE
     try {
         const poiSource = map.getSource('semenanjung-poi');
         if (poiSource) {
-            // Mengambil features yang telah dimuatkan ke dalam peta
             const features = map.querySourceFeatures('semenanjung-poi');
-            
-            // Cari padanan nama dalam harta (properties) GeoJSON
             const match = features.find(f => 
                 f.properties.name && f.properties.name.toLowerCase().includes(query)
             );
@@ -109,7 +155,6 @@ function renderSearchResult(lat, lon, name) {
         essential: true 
     });
 
-    // Buat marker baru untuk destinasi
     new maplibregl.Marker({ color: '#ff4b2b' })
         .setLngLat(dest)
         .setPopup(new maplibregl.Popup().setHTML(`<b>${name}</b>`))
@@ -125,7 +170,7 @@ function renderSearchResult(lat, lon, name) {
     }, 800);
 }
 
-// --- 6. LOGIK MOD PEMANDUAN 3D ---
+// --- 7. LOGIK MOD PEMANDUAN 3D ---
 function startNavigation() {
     const navPanel = document.getElementById('nav-instruction');
     if (navPanel) navPanel.style.display = 'block';
@@ -142,7 +187,7 @@ function startNavigation() {
     speak("Navigasi bermula. Terus ke hadapan.");
 }
 
-// --- 7. LOGIK POV PEMANDUAN & TRACKING ---
+// --- 8. LOGIK POV PEMANDUAN & TRACKING ---
 function startLocationTracking() {
     if (!navigator.geolocation) return;
 
@@ -179,7 +224,7 @@ function startLocationTracking() {
     });
 }
 
-// --- 8. RECENTER ---
+// --- 9. RECENTER ---
 function recenterMap() {
     if (map && currentPos) {
         map.flyTo({
@@ -199,7 +244,7 @@ function recenterMap() {
     }
 }
 
-// --- 9. SHARE LOCATION ---
+// --- 10. SHARE LOCATION ---
 function shareMyLocation() {
     const shareUrl = `https://www.google.com/maps?q=${currentPos[1]},${currentPos[0]}`;
     if (navigator.share) {
@@ -214,7 +259,7 @@ function shareMyLocation() {
     }
 }
 
-// --- 10. INIT MAP (INTEGRASI SMARTNAV-API) ---
+// --- 11. INIT MAP ---
 function initMap() {
     map = new maplibregl.Map({
         container: 'map',
@@ -229,14 +274,12 @@ function initMap() {
     map.on('load', () => {
         statusEl.innerText = "🚀 Menghubungkan ke SmartNav-API...";
 
-        // A. Masukkan Data Jalan Raya (76MB dari GitHub)
         map.addSource('semenanjung-roads', {
             type: 'geojson',
             data: 'https://raw.githubusercontent.com/aimanrafee/SmartNav-API/main/data/semenanjung-roads.json',
             tolerance: 0.5 
         });
 
-        // B. Paparkan Layer Jalan (Neon Style 2050)
         map.addLayer({
             'id': 'roads-master-layer',
             'type': 'line',
@@ -248,13 +291,11 @@ function initMap() {
             }
         });
 
-        // C. Masukkan Data POI (1.6MB) untuk Offline Search
         map.addSource('semenanjung-poi', {
             type: 'geojson',
             data: 'https://raw.githubusercontent.com/aimanrafee/SmartNav-API/main/data/semenanjung-poi.json'
         });
 
-        // D. Baiki Ralat 'building' (Check dahulu jika layer wujud)
         if (map.getLayer('building')) {
             try {
                 map.setPaintProperty('building', 'fill-extrusion-height', ['get', 'height']);
@@ -268,12 +309,14 @@ function initMap() {
         statusEl.innerText = "🚀 Navigasi 3D 2050 Aktif (API Connected)";
     });
 
-    map.on('styleimagemissing', (e) => {
-        console.warn(`Ikon "${e.id}" tiada dalam sprite. Menggunakan placeholder.`);
+    // Event: Sembunyi results-island bila klik peta
+    map.on('mousedown', () => {
+        const resultsEl = document.getElementById('search-results');
+        if (resultsEl) resultsEl.style.display = 'none';
     });
 }
 
-// --- 11. UTILITY ---
+// --- 12. UTILITY & STARTUP ---
 function saveTripData(coords) {
     if (dbRequest.result) {
         try {
@@ -293,7 +336,6 @@ function updateOnlineStatus() {
     statusEl.style.borderLeft = isOnline ? "5px solid #00d4ff" : "5px solid #ff4b2b";
 }
 
-// --- 12. STARTUP ---
 window.addEventListener('DOMContentLoaded', () => {
     initMap();
     window.addEventListener('online', updateOnlineStatus);
