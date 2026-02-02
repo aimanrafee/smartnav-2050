@@ -1,15 +1,51 @@
 {
   "name": "SmartNav 2050",
   "short_name": "SmartNav",
+  "description": "Navigation App powered by the OS Offline Smartest Algorithm for 2050 mobility.",
   "start_url": "./index.html",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "minimal-ui"],
   "background_color": "#000000",
   "theme_color": "#007bff",
+  "orientation": "portrait",
+  "categories": ["navigation", "utilities", "productivity"],
   "icons": [
     {
       "src": "icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
     }
-  ]
+  ],
+  "screenshots": [
+    {
+      "src": "screenshot-mobile.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Antaramuka Peta Pintar 2050"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mula Navigasi",
+      "short_name": "Navigasi",
+      "description": "Terus ke mod navigasi",
+      "url": "./index.html?mode=nav",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "prefer_related_applications": false
 }
