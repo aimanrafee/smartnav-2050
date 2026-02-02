@@ -1,6 +1,6 @@
 /**
  * SmartNav 2050 - Full Integrated Navigation Logic
- * Features: Offline IndexedDB, Real-time Tracking, Turn-by-Turn Routing
+ * Features: Offline IndexedDB, Real-time Tracking, Turn-by-Turn Routing, Recenter Map
  */
 
 // 1. Inisialisasi Pembolehubah Global
@@ -66,7 +66,7 @@ function startLocationTracking() {
             userMarker.setLatLng(currentPos);
         }
 
-        // Fokuskan peta ke lokasi pengguna (Optional: Hanya jika tidak sedang melihat laluan)
+        // Fokuskan peta ke lokasi pengguna secara lembut jika tidak dalam mod navigasi
         if (!routingControl) {
             map.panTo(currentPos);
         }
@@ -78,7 +78,26 @@ function startLocationTracking() {
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
 }
 
-// --- 5. INISIALISASI PETA (Leaflet) ---
+// --- 5. FUNGSI RECENTER (Kembali ke GPS) ---
+function recenterMap() {
+    if (currentPos) {
+        // Efek 'Fly' yang futuristik ke lokasi semasa
+        map.flyTo(currentPos, 16, {
+            animate: true,
+            duration: 1.5
+        });
+        
+        statusEl.innerText = "Mengunci lokasi GPS...";
+        statusEl.style.background = "rgba(230, 255, 240, 0.9)";
+        
+        // Kembalikan status asal selepas 2 saat
+        setTimeout(updateOnlineStatus, 2000);
+    } else {
+        alert("GPS sedang mencari isyarat lokasi...");
+    }
+}
+
+// --- 6. INISIALISASI PETA (Leaflet) ---
 function initMap() {
     map = L.map('map').setView(currentPos, 13);
 
@@ -94,7 +113,7 @@ function initMap() {
     });
 }
 
-// --- 6. FUNGSI UTILITY & STATUS ---
+// --- 7. FUNGSI UTILITY & STATUS ---
 function saveTripData(coords) {
     const db = dbRequest.result;
     if (!db) return;
@@ -118,7 +137,7 @@ function updateOnlineStatus() {
     statusEl.style.borderLeft = isOnline ? "5px solid #28a745" : "5px solid #dc3545";
 }
 
-// --- 7. PENDAFTARAN SERVICE WORKER & STARTUP ---
+// --- 8. STARTUP & EVENT LISTENERS ---
 window.addEventListener('load', () => {
     initMap();
     startLocationTracking();
@@ -128,6 +147,7 @@ window.addEventListener('load', () => {
     window.addEventListener('offline', updateOnlineStatus);
 });
 
+// Pendaftaran Service Worker
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js')
         .then(reg => console.log('SmartNav SW Registered'))
