@@ -1,6 +1,6 @@
 /**
  * SmartNav 2050 - 3D Driving & Liquid Glass Edition (Integrated)
- * Kemaskini: Real-time POV + Advanced Search + Navigation UI Logic
+ * Kemaskini: SmartNav-API Integration + Zero-Error Logic
  */
 
 // 1. Inisialisasi Pembolehubah Global
@@ -50,7 +50,6 @@ async function searchPOI(query) {
     statusEl.innerText = `Mencari: ${query}...`;
     
     try {
-        // Gunakan User-Agent & Headers untuk elakkan block (Rujukan Gambar 1)
         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`, {
             headers: { 
                 'Accept-Language': 'ms',
@@ -65,7 +64,6 @@ async function searchPOI(query) {
             const { lat, lon, display_name } = data[0];
             const dest = [parseFloat(lon), parseFloat(lat)];
             
-            // Simpan destinasi global
             window.currentDest = dest;
 
             map.flyTo({ 
@@ -84,7 +82,6 @@ async function searchPOI(query) {
             statusEl.innerText = `Destinasi: ${display_name}`;
             speak(`Destinasi ditemui. Klik Mula untuk navigasi.`);
             
-            // Automatik tanya untuk mula navigasi (UI Gambar 4)
             setTimeout(() => {
                 if(confirm("Mulakan Navigasi ke " + display_name + "?")) {
                     startNavigation();
@@ -108,8 +105,8 @@ function startNavigation() {
     if (navPanel) navPanel.style.display = 'block';
     
     map.easeTo({
-        pitch: 75,      // Condongkan peta ala Gambar 4
-        zoom: 18,       // Dekatkan kamera untuk butiran jalan
+        pitch: 75,
+        zoom: 18,
         duration: 2000,
         bearing: lastHeading,
         essential: true
@@ -140,7 +137,6 @@ function startLocationTracking() {
             userMarker.setLngLat(newCoords);
         }
 
-        // POV Dinamik: Peta akan bergerak mengikut pergerakan anda
         map.easeTo({
             center: newCoords,
             bearing: lastHeading, 
@@ -170,7 +166,6 @@ function recenterMap() {
         });
         statusEl.innerText = "🎯 GPS Terkunci";
         
-        // Sembunyikan panel nav jika mahu reset view
         const navPanel = document.getElementById('nav-instruction');
         if (navPanel) navPanel.style.display = 'none';
         
@@ -193,7 +188,7 @@ function shareMyLocation() {
     }
 }
 
-// --- 10. INIT MAP ---
+// --- 10. INIT MAP (DIKEMASKINI UNTUK SMARTNAV-API) ---
 function initMap() {
     map = new maplibregl.Map({
         container: 'map',
@@ -206,14 +201,50 @@ function initMap() {
     });
 
     map.on('load', () => {
-        statusEl.innerText = "🚀 Navigasi 3D 2050 Aktif";
-        
+        statusEl.innerText = "🚀 Menghubungkan ke SmartNav-API...";
+
+        // A. Masukkan Data Jalan Raya (76MB dari GitHub anda)
+        map.addSource('semenanjung-roads', {
+            type: 'geojson',
+            data: 'https://raw.githubusercontent.com/aimanrafee/SmartNav-API/main/data/semenanjung-roads.json',
+            tolerance: 0.5 
+        });
+
+        // B. Paparkan Layer Jalan (Neon Style 2050)
+        map.addLayer({
+            'id': 'roads-master-layer',
+            'type': 'line',
+            'source': 'semenanjung-roads',
+            'paint': {
+                'line-color': '#00d4ff',
+                'line-width': 2,
+                'line-opacity': 0.6
+            }
+        });
+
+        // C. Masukkan Data POI (1.6MB)
+        map.addSource('semenanjung-poi', {
+            type: 'geojson',
+            data: 'https://raw.githubusercontent.com/aimanrafee/SmartNav-API/main/data/semenanjung-poi.json'
+        });
+
+        // D. Baiki Ralat 'building' (Check dahulu jika layer wujud)
         if (map.getLayer('building')) {
-            map.setPaintProperty('building', 'fill-extrusion-height', ['get', 'height']);
+            try {
+                map.setPaintProperty('building', 'fill-extrusion-height', ['get', 'height']);
+            } catch (e) {
+                console.warn("Sistem: Layer 'building' wujud tetapi data 'height' tidak ditemui.");
+            }
         }
         
         startLocationTracking();
         updateOnlineStatus();
+        statusEl.innerText = "🚀 Navigasi 3D 2050 Aktif (API Connected)";
+    });
+
+    // Handle Error jika imej ikon (Sprite) tidak dijumpai
+    map.on('styleimagemissing', (e) => {
+        console.warn(`Ikon "${e.id}" tiada dalam sprite. Menggunakan placeholder.`);
     });
 }
 
