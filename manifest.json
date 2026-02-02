@@ -1,20 +1,25 @@
 {
-  "name": "SmartNav 2050",
-  "short_name": "SmartNav",
+  "name": "SmartNav 2050: Liquid Glass",
+  "short_name": "SmartNav2050",
   "description": "Navigation App powered by the OS Offline Smartest Algorithm for 2050 mobility.",
   "start_url": "./index.html",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "minimal-ui"],
-  "background_color": "#000000",
-  "theme_color": "#007bff",
-  "orientation": "portrait",
+  "background_color": "#0a0a0a",
+  "theme_color": "#00d4ff",
+  "orientation": "portrait-primary",
   "categories": ["navigation", "utilities", "productivity"],
   "icons": [
     {
-      "src": "smartnav2050.png",
-      "sizes": "192x192 512x512",
+      "src": "./smartnav2050.png",
+      "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "./smartnav2050.png",
+      "sizes": "512x512",
+      "type": "image/png"
     }
   ],
   "screenshots": [
@@ -34,7 +39,7 @@
       "url": "./index.html?mode=nav",
       "icons": [
         { 
-          "src": "smartnav2050.png", 
+          "src": "./smartnav2050.png", 
           "sizes": "192x192" 
         }
       ]
