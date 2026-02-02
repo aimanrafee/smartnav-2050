@@ -1,12 +1,13 @@
 /**
- * SmartNav 2050 - 3D Driving Edition (Satellite Hybrid)
- * Features: Dynamic Pitch, Satellite Layer, Improved Error Handling
+ * SmartNav 2050 - 3D Driving & Liquid Glass Edition (Integrated)
+ * Features: Dynamic Pitch, Satellite Hybrid Toggle, IndexedDB, Voice Guidance
  */
 
 // 1. Inisialisasi Pembolehubah Global
 let map;
 let userMarker = null;
 let currentPos = [101.6869, 3.1390]; // Format: [LNG, LAT]
+let isSatellite = false;
 const statusEl = document.getElementById('status');
 
 // --- 2. INDEXEDDB SETUP ---
@@ -29,18 +30,32 @@ function speak(text) {
     }
 }
 
-// --- 4. SEARCH POI (Dengan Perbaikan Ralat) ---
+// --- 4. FUNGSI TUKAR STYLE (Satellite/Hybrid Toggle) ---
+function toggleStyle() {
+    isSatellite = !isSatellite;
+    // Menggunakan URL tiles yang menyokong label jalan (Hybrid)
+    const style = isSatellite 
+        ? 'https://tiles.openfreemap.org/styles/bright' // Hybrid/Satellite style
+        : 'https://tiles.openfreemap.org/styles/liberty'; // Vektor/Street style
+    
+    map.setStyle(style);
+    
+    const modeText = isSatellite ? "Mod Satellite Hybrid Aktif" : "Mod Peta Vektor Aktif";
+    statusEl.innerText = modeText;
+    speak(modeText);
+}
+
+// --- 5. SEARCH POI (Dengan Perbaikan Ralat & Voice) ---
 async function searchPOI(query) {
     if (!query) return;
     statusEl.innerText = `Mencari: ${query}...`;
     
     try {
-        // Menggunakan User-Agent untuk mengelakkan ralat 403 pada Nominatim
         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`, {
             headers: { 'Accept-Language': 'ms' }
         });
         
-        if (!response.ok) throw new Error("Pelayan carian tidak bertindak balas.");
+        if (!response.ok) throw new Error("Pelayan tidak bertindak balas.");
         
         const data = await response.json();
         
@@ -51,17 +66,19 @@ async function searchPOI(query) {
             map.flyTo({ 
                 center: dest, 
                 zoom: 17, 
-                pitch: 65, 
+                pitch: 70, 
                 speed: 1.5,
                 curve: 1.2,
                 essential: true
             });
             
-            new maplibregl.Marker({ color: '#ff0000' })
+            // Tambah Marker Destinasi
+            new maplibregl.Marker({ color: '#ff4b2b' })
                 .setLngLat(dest)
                 .setPopup(new maplibregl.Popup().setHTML(`<b>Destinasi:</b><br>${display_name}`))
                 .addTo(map);
 
+            statusEl.innerText = `Destinasi: ${display_name}`;
             speak(`Destinasi ditemui. Menghalakan sistem ke ${display_name}`);
         } else {
             alert("Lokasi tidak ditemui. Sila cuba kata kunci lain.");
@@ -69,12 +86,12 @@ async function searchPOI(query) {
         }
     } catch (err) {
         console.error("Search Error:", err);
-        alert("Ralat: Gagal menghubungi pelayan carian. Sila semak internet anda.");
-        updateOnlineStatus();
+        statusEl.innerText = "⚠️ Ralat rangkaian carian.";
+        alert("Gagal menghubungi pelayan carian.");
     }
 }
 
-// --- 5. LOGIK MOOD PEMANDUAN & TRACKING ---
+// --- 6. LOGIK MOOD PEMANDUAN & TRACKING ---
 function startLocationTracking() {
     if (!navigator.geolocation) return;
 
@@ -93,13 +110,12 @@ function startLocationTracking() {
         }
 
         // FUNGSI UPDATE KAMERA DINAMIK (Mood 2050)
-        // Semakin laju kenderaan, semakin senget (pitch) peta untuk pandangan jauh
         map.easeTo({
             center: newCoords,
             bearing: heading || 0,
-            pitch: speed > 10 ? 75 : 65, // Dynamic pitch berdasarkan kelajuan
+            pitch: speed > 10 ? 75 : 65, // Dynamic pitch berdasarkan kelajuan (Driving Mood)
             duration: 2000,
-            easing: (t) => t // Pergerakan linear yang lebih natural
+            easing: (t) => t // Linear movement
         });
 
         saveTripData(position.coords);
@@ -110,7 +126,7 @@ function startLocationTracking() {
     });
 }
 
-// --- 6. RECENTER ---
+// --- 7. RECENTER ---
 function recenterMap() {
     if (map && currentPos) {
         map.flyTo({
@@ -126,7 +142,7 @@ function recenterMap() {
     }
 }
 
-// --- 7. SHARE LOCATION ---
+// --- 8. SHARE LOCATION ---
 function shareMyLocation() {
     const shareUrl = `https://www.google.com/maps?q=${currentPos[1]},${currentPos[0]}`;
     if (navigator.share) {
@@ -137,15 +153,14 @@ function shareMyLocation() {
         });
     } else {
         navigator.clipboard.writeText(shareUrl);
-        alert("Pautan lokasi telah disalin!");
+        alert("Pautan lokasi telah disalin ke clipboard!");
     }
 }
 
-// --- 8. INIT MAP (Mod Satellite Hybrid) ---
+// --- 9. INIT MAP (Mod Smart Vektor Awal) ---
 function initMap() {
     map = new maplibregl.Map({
         container: 'map',
-        // Menggunakan style Bright/Liberty yang menyokong label jalan yang jelas
         style: 'https://tiles.openfreemap.org/styles/bright', 
         center: currentPos,
         zoom: 15,
@@ -154,20 +169,23 @@ function initMap() {
         antialias: true
     });
 
+    // Sembunyikan kawalan asal untuk kekalkan estetika Liquid Glass
     map.addControl(new maplibregl.NavigationControl(), 'top-left');
 
     map.on('load', () => {
         statusEl.innerText = "🚀 Navigasi 3D 2050 Aktif";
-        // Tambah lapisan bangunan 3D jika ada data
+        
+        // Aktifkan Bangunan 3D
         if (map.getLayer('building')) {
             map.setPaintProperty('building', 'fill-extrusion-height', ['get', 'height']);
         }
+        
         startLocationTracking();
         updateOnlineStatus();
     });
 }
 
-// --- 9. UTILITY ---
+// --- 10. UTILITY (IndexedDB & Online Status) ---
 function saveTripData(coords) {
     if (dbRequest.result) {
         try {
@@ -187,7 +205,7 @@ function updateOnlineStatus() {
     statusEl.style.borderLeft = isOnline ? "5px solid #00d4ff" : "5px solid #ff4b2b";
 }
 
-// --- 10. STARTUP ---
+// --- 11. STARTUP ---
 window.addEventListener('DOMContentLoaded', () => {
     initMap();
     window.addEventListener('online', updateOnlineStatus);
